@@ -1,5 +1,5 @@
 [versions]
-accompanist = "0.28.0"
+accompanist = "0.30.1"
 androidx-activity = "1.6.1"
 androidx-lifecycle = "2.6.0"
 androidx-navigation = "2.5.3"
