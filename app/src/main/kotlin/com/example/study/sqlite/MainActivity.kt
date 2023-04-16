@@ -16,8 +16,62 @@
 
 package com.example.study.sqlite
 
+import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.Button
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 
 class MainActivity : ComponentActivity() {
-    // TODO:
+    companion object {
+        private fun log(msg: String) {
+            Log.i("MainActivity", msg)
+        }
+    }
+
+    private val vm by viewModels<MainActivityViewModel>()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        log("onCreate")
+        super.onCreate(savedInstanceState)
+
+        setContent { MainView(vm) }
+    }
+}
+
+@Composable
+fun MainView(vm: MainActivityViewModel) {
+    MaterialTheme {
+        Surface(Modifier.fillMaxSize()) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(vm::getCounter) { Text("Get") }
+                    Button({ vm.setCounter(0) }) { Text("Reset") }
+                }
+                Box {
+                    val counter by vm.counter.collectAsState()
+                    Text("counter: $counter")
+                }
+                Column {
+                    val counter by vm.loadAndIncrementValue.collectAsState()
+                    Text("Load and increment: $counter")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(vm::loadAndIncrement) { Text("Load and increment") }
+                        Button(vm::commitLoadAndIncrementValue) { Text("Commit") }
+                    }
+                }
+                Button(vm::loadAndIncrementTransaction) { Text("Load and increment transaction") }
+            }
+        }
+    }
 }
