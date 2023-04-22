@@ -9,6 +9,7 @@ plugins {
     alias libs.plugins.android.library apply false
     alias libs.plugins.android.test apply false
     alias libs.plugins.apollo apply false
+    alias libs.plugins.ksp apply false
     alias libs.plugins.spotless apply false
     alias libs.plugins.protobuf apply false
     alias libs.plugins.hilt apply false
@@ -74,11 +75,9 @@ def setupKotlinAndroidPlugin = { Project project ->
 def setupSpotlessPlugin = { Project project ->
     project.spotless {
         kotlin {
-            target project.fileTree(dir: 'src', include: '**/*.kt', exclude: ['test/**/*.kt', 'androidTest/**/*.kt'])
-            ktlint('0.48.2').userData([
-                android          : 'true',
-                'max-line-length': '120',
-            ])
+            target 'src/**/*.kt'
+            targetExclude 'test/**/*.kt', 'androidTest/**/*.kt'
+            ktlint('0.48.2')
         }
     }
 }

@@ -56,15 +56,15 @@ fun MainView(vm: MainActivityViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(vm::getCounter) { Text("Get") }
-                    Button({ vm.setCounter(0) }) { Text("Reset") }
+                    Button(vm::clearPrefs) { Text("Reset") }
                 }
                 Box {
                     val counter by vm.counter.collectAsState()
-                    Text("counter: $counter")
+                    Text("counter: ${counter.counter}")
                 }
                 Column {
                     val counter by vm.loadAndIncrementValue.collectAsState()
-                    Text("Load and increment: $counter")
+                    Text("Load and increment: ${counter.counter}")
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(vm::loadAndIncrement) { Text("Load and increment") }
                         Button(vm::commitLoadAndIncrementValue) { Text("Commit") }

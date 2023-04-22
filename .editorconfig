@@ -66,10 +66,11 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 max_line_length = 120
-ij_kotlin_imports_layout=*
+ij_kotlin_imports_layout = *
+ktlint_standard_no-wildcard-imports = disabled
 
 [**/{test,androidTest}/**/*.kt]
-disabled_rules=*
+disabled_rules = *
 
 [*.md]
 end_of_line = lf

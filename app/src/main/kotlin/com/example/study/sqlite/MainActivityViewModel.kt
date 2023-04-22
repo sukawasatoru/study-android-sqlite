@@ -17,17 +17,12 @@
 package com.example.study.sqlite
 
 import android.app.Application
-import android.content.ContentValues
-import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
-import androidx.core.database.sqlite.transaction
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlin.concurrent.thread
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class MainActivityViewModel(application: Application) : AndroidViewModel(application) {
@@ -37,6 +32,8 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
+    private val prefsRepo: PreferencesRepository = PreferencesRepositoryImpl(application)
+
     init {
         log("init")
     }
@@ -45,135 +42,81 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
         log("onCleared")
     }
 
-    private val _counter = MutableStateFlow(0)
-    val counter: StateFlow<Int> = _counter
-
-    private val dbHelper = TempDbHelper(application) { db ->
-        viewModelScope.launch {
-            _counter.value = getCounterInternal(db)
+    val counter: StateFlow<Preferences> = prefsRepo
+        .load()
+        .catch {
+            log("failed to load prefs: $it")
         }
-    }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, Preferences.DEFAULT)
 
     fun getCounter() {
         viewModelScope.launch {
-            // https://medium.com/androiddevelopers/threading-models-in-coroutines-and-android-sqlite-api-6cab11f7eb90
-            thread {
-                val ret = getCounterInternal(dbHelper.readableDatabase)
-                log("getCounter: $ret")
+            val ret = suspendRunCatching {
+                prefsRepo.load().first().counter
+            }.getOrElse {
+                log("getCounter $it")
+                return@launch
             }
+            log("getCounter: $ret")
         }
     }
 
-    fun setCounter(value: Int) {
+    fun clearPrefs() {
         viewModelScope.launch {
-            thread {
-                log("setCounter begin")
-                val db = dbHelper.writableDatabase
-                setCounterInternal(db, value)
-
-                _counter.value = getCounterInternal(db)
-                log("setCounter end")
+            prefsRepo.clear().getOrElse {
+                log("clearPrefs: $it")
             }
         }
     }
 
-    private fun setCounterInternal(db: SQLiteDatabase, value: Int) {
-        db.insertWithOnConflict("preferences", "", ContentValues(2).apply {
-            put("id", 1)
-            put("counter", value)
-        }, SQLiteDatabase.CONFLICT_REPLACE)
-    }
-
-    private val _loadAndIncrementValue = MutableStateFlow(0)
-    val loadAndIncrementValue: StateFlow<Int> = _loadAndIncrementValue
+    private val _loadAndIncrementValue = MutableStateFlow(Preferences.DEFAULT)
+    val loadAndIncrementValue: StateFlow<Preferences> = _loadAndIncrementValue
     fun loadAndIncrement() {
         viewModelScope.launch {
-            thread {
-                log("loadAndIncrement begin")
-                _loadAndIncrementValue.value = getCounterInternal(dbHelper.readableDatabase) + 1
-
-                log("loadAndIncrement end")
+            log("loadAndIncrement begin")
+            val current = suspendRunCatching {
+                prefsRepo.load().first()
+            }.getOrElse {
+                log("loadAndIncrement $it")
+                return@launch
             }
+            _loadAndIncrementValue.value = current.copy(
+                counter = current.counter + 1
+            )
+
+            log("loadAndIncrement end")
         }
     }
 
     fun commitLoadAndIncrementValue() {
         viewModelScope.launch {
-            thread {
-                log("commitLoadAndIncrementValue begin")
-                val db = dbHelper.writableDatabase
-                setCounterInternal(db, _loadAndIncrementValue.value)
-                _counter.value = getCounterInternal(db)
-                log("commitLoadAndIncrementValue end")
-            }
-        }
-    }
-
-    private fun getCounterInternal(db: SQLiteDatabase): Int {
-        db.query("preferences", arrayOf("counter"), "id = ?", arrayOf("1"), "", "", "")
-            .use { cursor ->
-                if (!cursor.moveToFirst()) {
-                    return 0
+            log("commitLoadAndIncrementValue begin")
+            prefsRepo.save(_loadAndIncrementValue.value)
+                .getOrElse {
+                    log("commitLoadAndIncrementValue $it")
+                    return@launch
                 }
-
-                return cursor.getInt(0)
-            }
+            log("commitLoadAndIncrementValue end")
+        }
     }
 
     fun loadAndIncrementTransaction() {
         viewModelScope.launch {
-            thread {
-                log("loadAndIncrementTransaction begin")
-                val db = dbHelper.writableDatabase
+            log("loadAndIncrementTransaction begin")
+            prefsRepo.transaction {
+                val current = load().first()
+                val newValue = current.copy(
+                    counter = current.counter + 1
+                )
+                log("loadAndIncrementTransaction new value: $newValue")
 
-                db.transaction {
-                    val newValue = getCounterInternal(this) + 1
-                    log("loadAndIncrementTransaction new value: $newValue")
-
-                    try {
-                        Thread.sleep(5_000)
-                    } catch (e: InterruptedException) {
-                        // do nothing.
-                    }
-                    setCounterInternal(this, newValue)
-                }
-
-                _counter.value = getCounterInternal(db)
-                log("loadAndIncrementTransaction end")
+                delay(5_000.milliseconds)
+                save(newValue)
+            }.getOrElse {
+                log("loadAndIncrementTransaction $it")
+                return@launch
             }
-        }
-    }
-
-    class TempDbHelper(context: Context, private val openCb: (db: SQLiteDatabase) -> Unit) :
-        SQLiteOpenHelper(context, null, null, 1) {
-        override fun onCreate(db: SQLiteDatabase) {
-            log("onCreate")
-
-            db.beginTransaction()
-            try {
-
-                db.execSQL("create table preferences(id integer primary key not null, counter integer not null);")
-                db.setTransactionSuccessful()
-            } finally {
-                db.endTransaction()
-            }
-        }
-
-        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            // do nothing.
-        }
-
-        override fun onConfigure(db: SQLiteDatabase) {
-            log("onConfigure")
-
-            db.enableWriteAheadLogging()
-            db.setForeignKeyConstraintsEnabled(true)
-        }
-
-        override fun onOpen(db: SQLiteDatabase) {
-            log("onOpen")
-
-            openCb(db)
+            log("loadAndIncrementTransaction end")
         }
     }
 }
