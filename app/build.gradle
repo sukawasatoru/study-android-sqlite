@@ -2,7 +2,6 @@ plugins {
     alias libs.plugins.android.application
     alias libs.plugins.kotlin.android
     alias libs.plugins.ksp
-    alias libs.plugins.spotless
 }
 
 android {
@@ -68,5 +67,4 @@ dependencies {
     implementation libs.androidx.room.ktx
     ksp libs.androidx.room.compiler
     implementation libs.kotlinx.coroutines.coroutines
-
 }

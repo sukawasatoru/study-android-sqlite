@@ -18,7 +18,7 @@ jobs:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./gradlew --info --stacktrace build
-  spotless:
+  ktlint:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -29,4 +29,4 @@ jobs:
           USERNAME: ${{ github.actor }}
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ./gradlew spotlessCheck
+          ./gradlew ktlintCheck

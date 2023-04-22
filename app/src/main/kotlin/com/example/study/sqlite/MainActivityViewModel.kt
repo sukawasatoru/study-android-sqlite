@@ -22,7 +22,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class MainActivityViewModel(application: Application) : AndroidViewModel(application) {
@@ -81,7 +86,7 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
                 return@launch
             }
             _loadAndIncrementValue.value = current.copy(
-                counter = current.counter + 1
+                counter = current.counter + 1,
             )
 
             log("loadAndIncrement end")
@@ -106,7 +111,7 @@ class MainActivityViewModel(application: Application) : AndroidViewModel(applica
             prefsRepo.transaction {
                 val current = load().first()
                 val newValue = current.copy(
-                    counter = current.counter + 1
+                    counter = current.counter + 1,
                 )
                 log("loadAndIncrementTransaction new value: $newValue")
 
